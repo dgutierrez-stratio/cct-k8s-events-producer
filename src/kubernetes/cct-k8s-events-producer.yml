@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cct-k8s-events-producer
+  labels:
+    app: cct-k8s-events-producer
+
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: all-namespaces-objects-reader
+rules:
+  - apiGroups: [""]
+    resources: ["services", "pods", "deployments"]
+    verbs: ["get", "list", "watch"]
+
+--- 
+
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cct-k8s-events-producer
+subjects:
+  - kind: ServiceAccount
+    name: cct-k8s-events-producer
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: all-namespaces-objects-reader
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: cct-k8s-events-producer
+  labels:
+    app: cct-k8s-events-producer
+spec:
+  ports:
+  - port: 8443
+    targetPort: 8443
+  selector:
+    app: cct-k8s-events-producer
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cct-k8s-events-producer
+  labels:
+    app: cct-k8s-events-producer
+spec:
+  replicas: 1
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: cct-k8s-events-producer
+  template:
+    metadata:
+      labels:
+        app: cct-k8s-events-producer
+    spec:
+      serviceAccountName: cct-k8s-events-producer
+      containers:
+      - name: cct-k8s-events-producer
+        image: qa.stratio.com/stratio/cct-k8s-events-producer:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8443
+          name: httpport
+        env:
+        - name: STRATIO_SERVER_SECURITY_ENABLED
+          value: "false"
+        - name: STRATIO_HTTP_SECURITY_ENABLED
+          value: "false"
+        - name: STRATIO_VAULT_ENABLED
+          value: "false"
+        - name: APPLICATION_WATCHER_ENABLED
+          value: "false"
+        - name: APPLICATION_INFORMER_ENABLED
+          value: "true"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8060
+          initialDelaySeconds: 30
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8060
+          initialDelaySeconds: 30
+          periodSeconds: 20

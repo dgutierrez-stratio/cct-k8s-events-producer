@@ -1,0 +1,40 @@
+management:
+  server:
+    port: ${server.port}
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: "*"
+
+spring:
+  devtools:
+    remote:
+      secret: morzongo
+
+stratio:
+  server:
+    security:
+      enabled: false
+  http:
+    security:
+      enabled: false
+      paths:
+        permit-all: /actuator/prometheus,/actuator/health,/error,/v3/api-docs/**,/swagger*/**
+        only-cluster-admin:
+      headers:
+        x-frame-options:
+          mode: DISABLED
+  vault:
+    enabled: false
+    auth-type: TOKEN
+      
+application:
+  api-client:
+    type: STANDARD
+
+debug: true
+logging:
+  config: classpath:logback-local.xml
+  level:
+    com.stratio: DEBUG
