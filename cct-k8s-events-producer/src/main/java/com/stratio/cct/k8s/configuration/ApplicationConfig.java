@@ -9,9 +9,7 @@
 
 package com.stratio.cct.k8s.configuration;
 
-import java.io.IOException;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -23,9 +21,10 @@ import org.springframework.web.servlet.mvc.annotation.ResponseStatusExceptionRes
 import com.stratio.cct.k8s.informer.InformerExecutor;
 import com.stratio.cct.k8s.watcher.WatchersExecutor;
 
-import io.kubernetes.client.openapi.ApiClient;
-import io.kubernetes.client.util.ClientBuilder;
-import okhttp3.OkHttpClient;
+import io.fabric8.kubernetes.client.Config;
+import io.fabric8.kubernetes.client.ConfigBuilder;
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClient;
 
 @Configuration
 public class ApplicationConfig {
@@ -44,35 +43,21 @@ public class ApplicationConfig {
   }
 
   @Bean
-  @ConditionalOnProperty(name = "application.api-client.type", havingValue = "STANDARD")
-  public ApiClient standardApiClient() throws IOException {
-    ApiClient apiClient = ClientBuilder.standard().build();
-    OkHttpClient httpClient =
-        apiClient.getHttpClient().newBuilder().readTimeout(0, TimeUnit.SECONDS).build();
-    apiClient.setHttpClient(httpClient);
-    return apiClient;
-  }
-
-  @Bean
-  @ConditionalOnProperty(name = "application.api-client.type", havingValue = "CLUSTER", matchIfMissing = true)
-  public ApiClient clusterApiClient() throws IOException {
-    ApiClient apiClient = ClientBuilder.cluster().build();
-    OkHttpClient httpClient =
-        apiClient.getHttpClient().newBuilder().readTimeout(5, TimeUnit.SECONDS).build();
-    apiClient.setHttpClient(httpClient);
-    return apiClient;
+  public KubernetesClient kubernetesClient() {
+    Config config = new ConfigBuilder().withNamespace(null).build();
+    return new DefaultKubernetesClient(config);
   }
 
   @Bean
   @ConditionalOnProperty(name = "application.watcher.enabled", havingValue = "true", matchIfMissing = true)
-  public WatchersExecutor wathersExecutor(ApiClient apiClient) {
-    return new WatchersExecutor(apiClient);
+  public WatchersExecutor wathersExecutor(KubernetesClient kubernetesClient) {
+    return new WatchersExecutor(kubernetesClient);
   }
 
   @Bean
   @ConditionalOnProperty(name = "application.informer.enabled", havingValue = "true", matchIfMissing = true)
-  public InformerExecutor informerExecutor(ApiClient apiClient) {
-    return new InformerExecutor(apiClient);
+  public InformerExecutor informerExecutor(KubernetesClient kubernetesClient) {
+    return new InformerExecutor(kubernetesClient);
   }
 
 }

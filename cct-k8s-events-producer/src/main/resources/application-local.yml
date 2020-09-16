@@ -28,10 +28,6 @@ stratio:
   vault:
     enabled: false
     auth-type: TOKEN
-      
-application:
-  api-client:
-    type: STANDARD
 
 debug: true
 logging:
