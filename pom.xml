@@ -38,6 +38,7 @@
 
   <modules>
     <module>cct-k8s-events-producer</module>
+    <module>cct-k8s-events-producer-api</module>
   </modules>
 
   <build>
