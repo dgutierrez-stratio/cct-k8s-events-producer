@@ -11,13 +11,16 @@
 
 package com.stratio.cct.k8s.watcher;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.LinkedList;
+import java.util.List;
 
 import org.springframework.context.SmartLifecycle;
 
-import io.kubernetes.client.openapi.ApiClient;
+import io.fabric8.kubernetes.api.model.apps.Deployment;
+import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.Watch;
+import io.fabric8.kubernetes.client.Watcher;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,31 +30,47 @@ import lombok.extern.slf4j.Slf4j;
 public class WatchersExecutor implements SmartLifecycle {
 
   @NonNull
-  private ApiClient apiClient;
+  private KubernetesClient kubernetesClient;
 
-  private ScheduledExecutorService executor;
+  private List<Watch> watchers;
 
   @Override
   public void start() {
     log.info("start");
-    executor = Executors.newScheduledThreadPool(4, r -> new Thread(r, "k8s-watcher-thread"));
-    executor.scheduleAtFixedRate(new PodWatcher(apiClient), 0, 1, TimeUnit.SECONDS);
+
+    watchers = new LinkedList<>();
+
+    watchers.add(initializeDeploymentsWatcher());
   }
 
   @Override
   public void stop() {
     log.info("stop");
-    executor.shutdown();
-    try {
-      executor.awaitTermination(60, TimeUnit.SECONDS);
-    } catch (final InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
+    watchers.forEach(Watch::close);
+    watchers = null;
   }
 
   @Override
   public boolean isRunning() {
-    return executor != null && !executor.isShutdown();
+    return watchers != null;
   }
 
+  private Watch initializeDeploymentsWatcher() {
+    return kubernetesClient.apps().deployments().watch(new Watcher<Deployment>() {
+
+      @Override
+      public void eventReceived(Action action, Deployment resource) {
+        log.info("{} {}: {}", action, resource.getKind(), resource);
+      }
+
+      @Override
+      public void onClose(KubernetesClientException cause) {
+        log.debug("Watcher onClose");
+        if (cause != null) {
+          log.error(cause.getMessage(), cause);
+        }
+      }
+
+    });
+  }
 }

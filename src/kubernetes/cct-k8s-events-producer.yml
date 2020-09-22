@@ -12,8 +12,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: all-namespaces-objects-reader
 rules:
-  - apiGroups: [""]
-    resources: ["services", "pods", "deployments"]
+  - apiGroups: ["apps", "extensions", "batch"]
+    resources: ["services", "pods", "deployments", "replicasets", "jobs", "cronjobs"]
     verbs: ["get", "list", "watch"]
 
 --- 
