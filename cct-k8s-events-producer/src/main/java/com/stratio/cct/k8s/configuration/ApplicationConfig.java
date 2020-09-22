@@ -24,6 +24,8 @@ import com.stratio.cct.k8s.informer.SimpleInformerExecutor;
 import com.stratio.cct.k8s.informer.handlers.LoggingResourceEventHandler;
 import com.stratio.cct.k8s.watcher.WatchersExecutor;
 
+import io.fabric8.kubernetes.api.model.Event;
+import io.fabric8.kubernetes.api.model.EventList;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodList;
@@ -83,6 +85,13 @@ public class ApplicationConfig {
     return new SimpleInformerExecutor<>(Pod.class, PodList.class, kubernetesClient, resourceEventHandler, null);
   }
 
+  @Bean
+  @Conditional(EventsInformerExecutorEnabled.class)
+  public SimpleInformerExecutor<Event, EventList> eventsInformerExecutor(
+      KubernetesClient kubernetesClient, ResourceEventHandler<Event> resourceEventHandler) {
+    return new SimpleInformerExecutor<>(Event.class, EventList.class, kubernetesClient, resourceEventHandler, null);
+  }
+
   public static class DeploymentInformerExecutorEnabled extends AllNestedConditions {
 
     public DeploymentInformerExecutorEnabled() {
@@ -110,7 +119,23 @@ public class ApplicationConfig {
     static class InformerEnabled {
     }
 
-    @ConditionalOnProperty(name = "application.informer.pods.enabled", havingValue = "true",
+    @ConditionalOnProperty(name = "application.informer.events.enabled", havingValue = "true",
+        matchIfMissing = true)
+    static class DeploymentsInformerEnabled {
+    }
+  }
+
+  public static class EventsInformerExecutorEnabled extends AllNestedConditions {
+
+    public EventsInformerExecutorEnabled() {
+      super(ConfigurationPhase.PARSE_CONFIGURATION);
+    }
+
+    @ConditionalOnProperty(name = "application.informer.enabled", havingValue = "true", matchIfMissing = true)
+    static class InformerEnabled {
+    }
+
+    @ConditionalOnProperty(name = "application.informer.events.enabled", havingValue = "true",
         matchIfMissing = true)
     static class DeploymentsInformerEnabled {
     }
